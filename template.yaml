@@ -224,7 +224,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
         
-  # RedshiftRole:
+  RedshiftRole:
     Type: AWS::IAM::Role
     Properties: 
       AssumeRolePolicyDocument:
