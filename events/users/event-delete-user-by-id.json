@@ -1,5 +1,5 @@
 {
-    "resource": "/users/{userid}",
+    "resource": "/users/{userId}",
     "path": "/users/f8216640-91a2-11eb-8ab9-57aa454facef",
     "httpMethod": "DELETE",
     "headers": null,
@@ -7,7 +7,7 @@
     "queryStringParameters": null,
     "multiValueQueryStringParameters": null,
     "pathParameters": {
-        "userid": "f8216640-91a2-11eb-8ab9-57aa454facef"
+        "userId": "f8216640-91a2-11eb-8ab9-57aa454facef"
     },
     "stageVariables": null,
     "requestContext": {

@@ -112,9 +112,9 @@ def test_get_single_user():
             "phone": "600000001",
         }
         ret = users.lambda_handler(apigw_event, "")
-        assert ret["statusCode"] == 200
         data = json.loads(ret["body"])
         assert data == expected_response
+        assert ret["statusCode"] == 200
 
 
 def test_get_single_user_wrong_id():
@@ -126,8 +126,8 @@ def test_get_single_user_wrong_id():
             apigw_event["pathParameters"]["userId"] = "123456789"
             apigw_event["rawPath"] = "/users/123456789"
         ret = users.lambda_handler(apigw_event, "")
-        assert ret["statusCode"] == 200
         assert json.loads(ret["body"]) == {}
+        assert ret["statusCode"] == 200
 
 
 @patch("uuid.uuid1", mock_uuid)
@@ -140,7 +140,6 @@ def test_add_user():
             apigw_event = json.load(f)
         expected_response = json.loads(apigw_event["body"])
         ret = users.lambda_handler(apigw_event, "")
-        assert ret["statusCode"] == 200
         data = json.loads(ret["body"])
         assert data["userId"] == UUID_MOCK_VALUE_NEW_USER
         assert data["idNumber"] == expected_response["idNumber"]
@@ -148,6 +147,7 @@ def test_add_user():
         assert data["lastName"] == expected_response["lastName"]
         assert data["email"] == expected_response["email"]
         assert data["phone"] == expected_response["phone"]
+        assert ret["statusCode"] == 200
 
 
 def test_delete_user():
@@ -157,8 +157,8 @@ def test_delete_user():
         with open("./events/users/event-delete-user-by-id.json", "r") as f:
             apigw_event = json.load(f)
         ret = users.lambda_handler(apigw_event, "")
-        assert ret["statusCode"] == 200
         assert json.loads(ret["body"]) == {}
+        assert ret["statusCode"] == 200
 
 
 # Add your unit testing code here

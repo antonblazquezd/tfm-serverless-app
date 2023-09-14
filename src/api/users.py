@@ -56,8 +56,6 @@ def lambda_handler(event, context):
             if not is_valid_body(request_json):
                 return response(400, {'message': 'Error: Invalid body fields'})
 
-            request_json['timestamp'] = datetime.now().isoformat()
-
             # generate unique id if it isn't present in the request
             if 'userId' not in request_json:
                 request_json['userId'] = str(uuid.uuid1())
