@@ -1,0 +1,8 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "ws-serverless-patterns"
+resolve_s3 = true
+s3_prefix = "ws-serverless-patterns"
+region = "eu-north-1"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []

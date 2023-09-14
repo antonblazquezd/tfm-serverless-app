@@ -1,0 +1,18 @@
+{
+    "resource": "/users/{userId}/wallets",
+    "path": "/users/6e523fff-5239-11ee-8dc4-05a3ca38cd32/wallets",
+    "httpMethod": "POST",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "userId": "6e523fff-5239-11ee-8dc4-05a3ca38cd32",
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "be946131-30c4-4396-9c29-f25f8caa91dc"
+    },
+    "body": "{\"address\":\"BTC\", \"balance\":\"Bitcoin\", \"assetId\":\"266974a1-519b-11ee-9be5-cd08b377c2b7\"}",
+    "isBase64Encoded": false
+}

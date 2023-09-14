@@ -1,0 +1,18 @@
+{
+    "resource": "/users/{userId}/wallets",
+    "path": "/users/6ecfd58f-522c-11ee-ac6a-f33696c7d83a/wallets",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "userId": "6ecfd58f-522c-11ee-ac6a-f33696c7d83a",
+    },Ï
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "be946131-30c4-4396-9c29-f25f8caa91dc"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}

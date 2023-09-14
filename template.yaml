@@ -1,0 +1,395 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM Template for Serverless Patterns v1 - Data store
+
+Globals:
+  Function:
+    Runtime: python3.9
+    MemorySize: 128
+    Timeout: 100
+    Tracing: Active
+    
+    
+Resources:
+  AssetsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: !Sub  ${AWS::StackName}-Assets
+        AttributeDefinitions:
+          - AttributeName: assetId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: assetId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+  
+  UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: !Sub  ${AWS::StackName}-Users
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        
+  WalletsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: !Sub  ${AWS::StackName}-Wallets
+        AttributeDefinitions:
+          - AttributeName: walletId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: walletId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: Wallets-AssetIndex
+            KeySchema: 
+              - AttributeName: userId
+                KeyType: HASH
+            Projection: 
+                ProjectionType: ALL
+
+        
+  AssetsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/api/assets.lambda_handler
+      Description: Handler for all assets related operations
+      Environment:
+        Variables:
+          ASSETS_TABLE: !Ref AssetsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AssetsTable
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+      Events:
+        GetAssetsEvent:
+          Type: Api
+          Properties:
+            Path: /assets
+            Method: get
+            RestApiId: !Ref RestAPI
+        GetAssetEvent:
+          Type: Api
+          Properties:
+            Path: /assets/{assetId}
+            Method: get
+            RestApiId: !Ref RestAPI
+        PutAssetEvent:
+          Type: Api
+          Properties:
+            Path: /assets
+            Method: post
+            RestApiId: !Ref RestAPI
+            
+  UsersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/api/users.lambda_handler
+      Description: Handler for all users related operations
+      Environment:
+        Variables:
+          USERS_TABLE: !Ref UsersTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+      Events:
+        GetUsersEvent:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: get
+            RestApiId: !Ref RestAPI
+        PostUserEvent:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: post
+            RestApiId: !Ref RestAPI
+        UpdateUserEvent:
+          Type: Api
+          Properties:
+            Path: /users/{userId}
+            Method: put
+            RestApiId: !Ref RestAPI
+        GetUserEvent:
+          Type: Api
+          Properties:
+            Path: /users/{userId}
+            Method: get
+            RestApiId: !Ref RestAPI
+        DeleteUserEvent:
+          Type: Api
+          Properties:
+            Path: /users/{userId}
+            Method: delete
+            RestApiId: !Ref RestAPI
+            
+  WalletsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/api/wallets.lambda_handler
+      Description: Handler for all wallet related operations
+      Environment:
+        Variables:
+          WALLETS_TABLE: !Ref WalletsTable
+          USERS_TABLE: !Ref UsersTable
+          ASSETS_TABLE: !Ref AssetsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WalletsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref AssetsTable
+      Tags:
+        Stack: !Sub "${AWS::StackName}"
+      Events:
+        GetWalletsEvent:
+          Type: Api
+          Properties:
+            Path: /users/{userId}/wallets
+            Method: get
+            RestApiId: !Ref RestAPI
+        PostWalletEvent:
+          Type: Api
+          Properties:
+            Path: /users/{userId}/wallets
+            Method: post
+            RestApiId: !Ref RestAPI
+        UpdateWalletEvent:
+          Type: Api
+          Properties:
+            Path: /users/{userId}/wallets/{walletId}
+            Method: put
+            RestApiId: !Ref RestAPI
+        GetWalletEvent:
+          Type: Api
+          Properties:
+            Path: /users/{userId}/wallets/{walletId}
+            Method: get
+            RestApiId: !Ref RestAPI
+        DeleteWalletEvent:
+          Type: Api
+          Properties:
+            Path: /users/{userId}/wallets/{walletId}
+            Method: delete
+            RestApiId: !Ref RestAPI
+  
+        
+  RestAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      TracingEnabled: true
+      Tags:
+        Name: !Sub "${AWS::StackName}-API"
+        Stack: !Sub "${AWS::StackName}" 
+      # This properties enable API Gateway access and execution logging 
+      AccessLogSetting:
+        DestinationArn: !GetAtt AccessLogs.Arn
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","routeKey":"$context.routeKey", "status":"$context.status","protocol":"$context.protocol", "integrationStatus": $context.integrationStatus, "integrationLatency": $context.integrationLatency, "responseLength":"$context.responseLength" }'
+      MethodSettings:
+        - ResourcePath: "/*"
+          LoggingLevel: INFO
+          HttpMethod: "*"
+          DataTraceEnabled: True  
+     
+        
+  # Creates an IAM role to be used for API logging, and then connects API Gateway
+  # to that newly created role to write API logs to Amazon CloudWatch Logs.
+  ApiLoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action: "sts:AssumeRole"
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+        
+  # RedshiftRole:
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - redshift.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/AmazonRedshiftAllCommandsFullAccess
+
+  RedshiftNamespace:
+    Type: AWS::RedshiftServerless::Namespace
+    Properties: 
+      DbName: tfmdatabase
+      AdminUsername: admin
+      AdminUserPassword: Password123
+      NamespaceName: tfm
+      IamRoles:
+        - !GetAtt RedshiftRole.Arn
+     
+  RedshiftWorkgroup: 
+    Type: AWS::RedshiftServerless::Workgroup
+    Properties: 
+      BaseCapacity: 32
+      NamespaceName: !Ref RedshiftNamespace
+      WorkgroupName: !Sub "${AWS::StackName}-tfmredshiftworkgroup"
+
+
+
+  ApiGatewayAccountLoggingSettings:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt ApiLoggingRole.Arn
+      
+      
+  # API Gateway access logs entries are set to stream in to CloudWatch logs:
+  AccessLogs:
+    Type: AWS::Logs::LogGroup
+    DependsOn: ApiLoggingRole
+    Properties:
+      RetentionInDays: 30
+      LogGroupName: !Sub "/${AWS::StackName}/APIAccessLogs"
+      
+  # This is a topic queue that the components will use to send notifications for triggered alarms.
+  AlarmsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Tags:
+        - Key: "Stack" 
+          Value: !Sub "${AWS::StackName}"
+         
+  # The API Gateway alarm will simply send a message every time any error is logged in the past minute 
+  RestAPIErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref RestAPI
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1.0
+      Period: 60
+      EvaluationPeriods: 1
+      
+  # The Assets function will send a notification any time an error occurs in the last minute.
+  AssetsFunctionErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmsTopic
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref AssetsFunction
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Statistic: Sum
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 1.0
+      Period: 60
+      EvaluationPeriods: 1
+      
+  
+  ApplicationDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${AWS::StackName}-dashboard"
+      DashboardBody:
+        Fn::Sub: >
+          {
+            "widgets": [
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${AssetsFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Assets Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 12,
+                    "y": 0,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/ApiGateway", "4XXError", "ApiName", "${AWS::StackName}", { "yAxis": "right" } ],
+                            [ ".", "5XXError", ".", ".", { "yAxis": "right" } ],
+                            [ ".", "DataProcessed", ".", ".", { "yAxis": "left" } ],
+                            [ ".", "Count", ".", ".", { "label": "Count", "yAxis": "right" } ],
+                            [ ".", "IntegrationLatency", ".", ".", { "stat": "Average" } ],
+                            [ ".", "Latency", ".", ".", { "stat": "Average" } ]
+                        ],
+                        "view": "timeSeries",
+                        "stacked": false,
+                        "region": "${AWS::Region}",
+                        "period": 60,
+                        "stat": "Sum",
+                        "title": "API Gateway"
+                    }
+                }
+            ]
+          }
+
+Outputs:
+  AssetsTable:
+      Description: DynamoDB Asset table
+      Value: !Ref AssetsTable
+      
+  AssetsFunction:
+    Description: "Lambda function used to perform actions on the assets data"
+    Value: !Ref AssetsFunction
+    
+  APIEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${RestAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+
+  DashboardURL:
+    Description: "Dashboard URL"
+    Value: !Sub "https://console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${ApplicationDashboard}"
+    
+  AlarmsTopic:
+    Description: "SNS Topic to be used for the alarms subscriptions"
+    Value: !Ref AlarmsTopic
