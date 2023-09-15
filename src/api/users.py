@@ -73,7 +73,6 @@ def lambda_handler(event, context):
             if not is_valid_body(request_json):
                 return response(400, {'message': 'Error: Invalid body fields'})
 
-            request_json['timestamp'] = datetime.now().isoformat()
             request_json['userId'] = event['pathParameters']['userId']
             # update the database
             ddbUserTable.put_item(Item=request_json)
