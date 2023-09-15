@@ -204,15 +204,15 @@ def test_get_list_of_assets():
             apigw_get_all_assets_event = json.load(f)
         expected_response = [
             {
-                "assetId": {"S": UUID_MOCK_VALUE_BTC},
-                "symbol": {"S": "BTC"},
-                "blockchain": {"S": "Bitcoin"},
+                "assetId": UUID_MOCK_VALUE_BTC,
+                "symbol": "BTC",
+                "blockchain": "Bitcoin",
             },
             {
-                "assetId": {"S": UUID_MOCK_VALUE_BTC},
-                "symbol": {"S": "BTC"},
-                "blockchain": {"S": "Bitcoin"},
-            }
+                "assetId": UUID_MOCK_VALUE_BTC,
+                "symbol": "BTC",
+                "blockchain": "Bitcoin",
+            },
         ]
         ret = assets.lambda_handler(apigw_get_all_assets_event, "")
         assert ret["statusCode"] == 200
