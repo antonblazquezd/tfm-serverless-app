@@ -63,13 +63,13 @@ def lambda_handler(event, context):
         # Read a operation by ID
         if route_key == 'GET /users/{userId}/wallets/{walletId}/operations/{operationId}':
             # get data from the database
-            ddb_response = dynamodb.Table(WALLETS_TABLE).get_item(
-                TableName= WALLETS_TABLE,
-                Key={'walletId': event['pathParameters']['walletId']}
+            ddb_response = dynamodb.Table(OPERATIONS_TABLE).get_item(
+                TableName= OPERATIONS_TABLE,
+                Key={'operationId': event['pathParameters']['operationId']}
             )
             
             # return single item instead of full DynamoDB response
-            if 'Item' in ddb_response and ddb_response['Item']['userId'] == event['pathParameters']['userId']:
+            if 'Item' in ddb_response and ddb_response['Item']['walletId'] == event['pathParameters']['walletId']:
                 response_body = ddb_response['Item']
             else:
                 response_body = {}
@@ -87,8 +87,8 @@ def lambda_handler(event, context):
                 return response(400, {'message': 'Error: Invalid userId'})
 
             # delete item in the database
-            dynamodb.Table(WALLETS_TABLE).delete_item(
-                TableName= WALLETS_TABLE,
+            dynamodb.Table(OPERATIONS_TABLE).delete_item(
+                TableName= OPERATIONS_TABLE,
                 Key={'walletId': event['pathParameters']['walletId']}
             )
             response_body = {}
@@ -103,19 +103,19 @@ def lambda_handler(event, context):
                 return response(400, {'message': 'Error: Invalid body fields'})
 
             # check if the wallet belongs to the user
-            if not ddb_response_wallet['Item']['walletId'] == ddb_response_user['Item']['walletId']:
+            if not ddb_response_wallet['Item']['userId'] == ddb_response_user['Item']['userId']:
                 return response(400, { 'Error': "Wallet does not belong to the user"})
 
             request_json['walletId'] = event['pathParameters']['walletId']
 
-            # generate unique id if it isn't present in the request
-            if 'walletId' not in request_json:
-                request_json['walletId'] = str(uuid.uuid1())
+            # generate unique id 
+            request_json['operationId'] = str(uuid.uuid1())
+                
             # update the database
-            dynamodb.Table(WALLETS_TABLE).put_item(
-                TableName= WALLETS_TABLE,
+            dynamodb.Table(OPERATIONS_TABLE).put_item(
+                TableName= OPERATIONS_TABLE,
                 Item=request_json
-                )
+            )
             response_body = request_json
             status_code = 201
 
@@ -130,7 +130,7 @@ def lambda_handler(event, context):
 
             request_json['walletId'] = event['pathParameters']['walletId']
             # update the database
-            dynamodb.Table(WALLETS_TABLE).put_item(TableName= WALLETS_TABLE,Item=request_json)
+            dynamodb.Table(OPERATIONS_TABLE).put_item(TableName= OPERATIONS_TABLE,Item=request_json)
             response_body = request_json
             status_code = 200
     except Exception as err:
@@ -187,7 +187,6 @@ def is_valid_body(request_json):
             request_json
             and 'amount' in request_json
             and 'type' in request_json
-            and 'walletId' in request_json
         )
     except (json.JSONDecodeError, KeyError):
         return False
