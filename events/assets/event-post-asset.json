@@ -1,7 +1,7 @@
 {
     "resource": "/assets",
     "path": "/assets",
-    "httpMethod": "PUT",
+    "httpMethod": "POST",
     "headers": null,
     "multiValueHeaders": null,
     "queryStringParameters": null,
@@ -9,8 +9,8 @@
     "pathParameters": null,
     "stageVariables": null,
     "requestContext": {
-        "requestId": "be946131-30c4-4396-9c29-f25f8caa91dc"
+      "requestId": "bdfe6183-01d5-4ef7-b457-283838b07fc4"
     },
-    "body": "{\"symbol\":\"BTC\", \"blockchain\":\"Bitcoin\"}",
+    "body": "{\"symbol\":\"DOT\",\"blockchain\":\"Polkadot\"}",
     "isBase64Encoded": false
-}
+  }

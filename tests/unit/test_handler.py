@@ -15,17 +15,22 @@ UUID_MOCK_VALUE_NEW_USER = "new-user-guid"
 ASSETS_MOCK_TABLE_NAME = "AssetsTest"
 UUID_MOCK_VALUE_BTC = "09d97f0a-23e9-4930-a93a-cba3c9b7e9e2"
 UUID_MOCK_VALUE_ETH = "79add0c4-4a41-4b5b-84a8-ad513242b390"
+UUID_MOCK_VALUE_NEW_ASSET = "new-asset-guid"
 
 
-def mock_uuid():
+def mock_uuid_user():
     return UUID_MOCK_VALUE_NEW_USER
-
+    
+def mock_uuid_asset():
+    return UUID_MOCK_VALUE_NEW_ASSET
+    
 
 @contextmanager
 def my_test_environment():
     with mock_dynamodb():
         set_up_dynamodb()
-        put_data_dynamodb()
+        put_data_dynamodb_user()
+        put_data_dynamodb_asset()
         yield
 
 
@@ -49,7 +54,7 @@ def set_up_dynamodb():
     )
 
 
-def put_data_dynamodb():
+def put_data_dynamodb_user():
     conn = boto3.client("dynamodb")
     conn.put_item(
         TableName=USERS_MOCK_TABLE_NAME,
@@ -73,6 +78,9 @@ def put_data_dynamodb():
             "phone": {"S": "600000002"},
         },
     )
+    
+def put_data_dynamodb_asset():
+    conn = boto3.client("dynamodb")
     conn.put_item(
         TableName=ASSETS_MOCK_TABLE_NAME,
         Item={
@@ -158,7 +166,7 @@ def test_get_single_user_wrong_id():
         assert ret["statusCode"] == 200
 
 
-@patch("uuid.uuid1", mock_uuid)
+@patch("uuid.uuid1", mock_uuid_user)
 @pytest.mark.freeze_time("2001-01-01")
 def test_add_user():
     with my_test_environment():
@@ -189,8 +197,6 @@ def test_delete_user():
         assert ret["statusCode"] == 200
 
 
-# Add your unit testing code here
-
 
 @patch.dict(
     os.environ,
@@ -209,12 +215,67 @@ def test_get_list_of_assets():
                 "blockchain": "Bitcoin",
             },
             {
-                "assetId": UUID_MOCK_VALUE_BTC,
-                "symbol": "BTC",
-                "blockchain": "Bitcoin",
+                "assetId": UUID_MOCK_VALUE_ETH,
+                "symbol": "ETH",
+                "blockchain": "Ethereum",
             },
         ]
         ret = assets.lambda_handler(apigw_get_all_assets_event, "")
         assert ret["statusCode"] == 200
         data = json.loads(ret["body"])
         assert data == expected_response
+
+
+def test_get_single_asset():
+    with my_test_environment():
+        from src.api import assets
+
+        with open("./events/assets/event-get-asset-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+        expected_response = {
+            "blockchain": "Bitcoin",
+            "assetId": UUID_MOCK_VALUE_BTC,
+            "symbol": "BTC",
+        }
+        ret = assets.lambda_handler(apigw_event, "")
+        data = json.loads(ret["body"])
+        assert data == expected_response
+        assert ret["statusCode"] == 200
+        
+def test_get_single_asset_wrong_id():
+    with my_test_environment():
+        from src.api import assets
+
+        with open("./events/assets/event-get-asset-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+            apigw_event["pathParameters"]["assetId"] = "123456789"
+            apigw_event["rawPath"] = "/assets/123456789"
+        ret = assets.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {}
+        assert ret["statusCode"] == 200
+        
+@patch("uuid.uuid1", mock_uuid_asset)
+@pytest.mark.freeze_time("2001-01-01")
+def test_add_asset():
+    with my_test_environment():
+        from src.api import assets
+
+        with open("./events/assets/event-post-asset.json", "r") as f:
+            apigw_event = json.load(f)
+        expected_response = json.loads(apigw_event["body"])
+        ret = assets.lambda_handler(apigw_event, "")
+        data = json.loads(ret["body"])
+        assert data["assetId"] == UUID_MOCK_VALUE_NEW_ASSET
+        assert data["symbol"] == expected_response["symbol"]
+        assert data["blockchain"] == expected_response["blockchain"]
+        assert ret["statusCode"] == 200
+        
+def test_delete_asset():
+    with my_test_environment():
+        from src.api import assets
+
+        with open("./events/assets/event-delete-asset-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+        ret = assets.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {}
+        assert ret["statusCode"] == 200
