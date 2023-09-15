@@ -1,0 +1,16 @@
+{
+    "resource": "/assets",
+    "path": "/assets",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": null,
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "926187f9-4aa2-46f0-a3c8-6ca6ca52c2ec"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}
