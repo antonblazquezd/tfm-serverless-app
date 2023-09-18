@@ -60,9 +60,9 @@ def lambda_handler(event, context):
             if not is_valid_body(request_json):
                 return response(400, {'message': 'Error: Invalid body fields'})
                 
-            # generate unique id if it isn't present in the request
-            if 'assetId' not in request_json:
-                request_json['assetId'] = str(uuid.uuid1())
+            # generate unique id 
+            request_json['assetId'] = str(uuid.uuid1())
+            
             # update the database
             ddbTable.put_item(
                 Item=request_json

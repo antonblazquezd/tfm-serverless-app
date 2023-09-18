@@ -95,21 +95,18 @@ def lambda_handler(event, context):
                 return response(400, {'message': 'Error: Invalid body fields'})
 
             # check if asset is valid
-            
             ddb_response_asset = dynamodb.Table(ASSETS_TABLE).get_item(
                 TableName= ASSETS_TABLE,
                 Key={'assetId': request_json['assetId']}
             )
-    
             if 'Item' not in ddb_response_asset:
                 return response(400, { 'Error': "Asset not found"})
                 
-
             request_json['userId'] = event['pathParameters']['userId']
 
             # generate unique id if it isn't present in the request
-            if 'walletId' not in request_json:
-                request_json['walletId'] = str(uuid.uuid1())
+            request_json['walletId'] = str(uuid.uuid1())
+
             # update the database
             dynamodb.Table(WALLETS_TABLE).put_item(
                 TableName= WALLETS_TABLE,
