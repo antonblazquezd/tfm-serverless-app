@@ -8,7 +8,7 @@ from datetime import datetime
 dynamodb = boto3.resource('dynamodb')
 
 WALLETS_TABLE = os.getenv('WALLETS_TABLE', None)
-USERS_TABLE = os.getenv("USERS_TABLE", None)
+USERS_TABLE = os.getenv('USERS_TABLE', None)
 ASSETS_TABLE = os.getenv('ASSETS_TABLE', None)
 
 
