@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  SAM Template for Serverless Patterns v1 - Data store
+  SAM Template for Daniel Anton Blazquez TFM application
 
 Globals:
   Function:
@@ -422,6 +422,72 @@ Resources:
                 },
                 {
                     "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${UsersFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Users Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${WalletsFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Wallets Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
+                    "width": 6,
+                    "y": 6,
+                    "x": 0,
+                    "type": "metric",
+                    "properties": {
+                        "metrics": [
+                            [ "AWS/Lambda", "Invocations", "FunctionName", "${OperationsFunction}" ],
+                            [ ".", "Errors", ".", "." ],
+                            [ ".", "Throttles", ".", "." ],
+                            [ ".", "Duration", ".", ".", { "stat": "Average" } ],
+                            [ ".", "ConcurrentExecutions", ".", ".", { "stat": "Maximum" } ]
+                        ],
+                        "view": "timeSeries",
+                        "region": "${AWS::Region}",
+                        "stacked": false,
+                        "title": "Operations Lambda",
+                        "period": 60,
+                        "stat": "Sum"
+                    }
+                },
+                {
+                    "height": 6,
                     "width": 12,
                     "y": 0,
                     "x": 0,
@@ -447,14 +513,6 @@ Resources:
           }
 
 Outputs:
-  AssetsTable:
-      Description: DynamoDB Asset table
-      Value: !Ref AssetsTable
-      
-  AssetsFunction:
-    Description: "Lambda function used to perform actions on the assets data"
-    Value: !Ref AssetsFunction
-    
   APIEndpoint:
     Description: "API Gateway endpoint URL"
     Value: !Sub "https://${RestAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod"
