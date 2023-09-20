@@ -304,6 +304,20 @@ def test_get_single_user_wrong_id():
         assert ret["statusCode"] == 200
 
 
+def test_add_user_invalid_body_fields():
+    with my_test_environment():
+        from src.api import users
+
+        with open("./events/users/event-post-user.json", "r") as f:
+            apigw_event = json.load(f)
+        apigw_event["body"] = json.loads(apigw_event["body"])
+        del apigw_event["body"]["firstName"]
+        apigw_event["body"] = json.dumps(apigw_event["body"])
+        ret = users.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {"Error": "Invalid body fields"}
+        assert ret["statusCode"] == 400
+
+
 @patch("uuid.uuid1", mock_uuid_user)
 @pytest.mark.freeze_time("2001-01-01")
 def test_add_user():
@@ -407,6 +421,20 @@ def test_get_single_asset_wrong_id():
         ret = assets.lambda_handler(apigw_event, "")
         assert json.loads(ret["body"]) == {}
         assert ret["statusCode"] == 200
+
+
+def test_add_asset_invalid_body_fields():
+    with my_test_environment():
+        from src.api import assets
+
+        with open("./events/assets/event-post-asset.json", "r") as f:
+            apigw_event = json.load(f)
+        apigw_event["body"] = json.loads(apigw_event["body"])
+        del apigw_event["body"]["symbol"]
+        apigw_event["body"] = json.dumps(apigw_event["body"])
+        ret = assets.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {"Error": "Invalid body fields"}
+        assert ret["statusCode"] == 400
 
 
 @patch("uuid.uuid1", mock_uuid_asset)
@@ -542,6 +570,20 @@ def test_add_wallet_wrong_asset_id():
         assert ret["statusCode"] == 400
 
 
+def test_add_wallet_invalid_body_fields():
+    with my_test_environment():
+        from src.api import wallets
+
+        with open("./events/wallets/event-post-wallet.json", "r") as f:
+            apigw_event = json.load(f)
+        apigw_event["body"] = json.loads(apigw_event["body"])
+        del apigw_event["body"]["balance"]
+        apigw_event["body"] = json.dumps(apigw_event["body"])
+        ret = wallets.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {"Error": "Invalid body fields"}
+        assert ret["statusCode"] == 400
+
+
 @patch("uuid.uuid1", mock_uuid_wallet)
 @pytest.mark.freeze_time("2001-01-01")
 def test_add_wallet():
@@ -578,6 +620,7 @@ def test_delete_wallet():
 
 UUID_MOCK_VALUE_NEW_OPERATION = "new-operation-guid"
 
+
 def mock_uuid_operation():
     return UUID_MOCK_VALUE_NEW_OPERATION
 
@@ -600,18 +643,16 @@ def test_get_list_of_operations():
             apigw_get_all_operations_event = json.load(f)
         expected_response = [
             {
+                "operationId": UUID_MOCK_VALUE_NEW_OPERATION1,
+                "amount": "5",
+                "type": "buy",
                 "walletId": UUID_MOCK_VALUE_NEW_WALLET1,
-                "address": "0x123456789",
-                "balance": "5",
-                "userId": UUID_MOCK_VALUE_MARY,
-                "assetId": UUID_MOCK_VALUE_DOT,
             },
             {
-                "walletId": UUID_MOCK_VALUE_NEW_WALLET2,
-                "address": "0x987654321",
-                "balance": "10",
-                "userId": UUID_MOCK_VALUE_MARY,
-                "assetId": UUID_MOCK_VALUE_DOT,
+                "operationId": UUID_MOCK_VALUE_NEW_OPERATION2,
+                "amount": "10",
+                "type": "sell",
+                "walletId": UUID_MOCK_VALUE_NEW_WALLET1,
             },
         ]
         ret = operations.lambda_handler(apigw_get_all_operations_event, "")
@@ -627,11 +668,10 @@ def test_get_single_operation():
         with open("./events/operations/event-get-operation-by-id.json", "r") as f:
             apigw_event = json.load(f)
         expected_response = {
+            "operationId": UUID_MOCK_VALUE_NEW_OPERATION1,
+            "amount": "5",
+            "type": "buy",
             "walletId": UUID_MOCK_VALUE_NEW_WALLET1,
-            "address": "0x123456789",
-            "balance": "5",
-            "userId": UUID_MOCK_VALUE_MARY,
-            "assetId": UUID_MOCK_VALUE_DOT,
         }
         ret = operations.lambda_handler(apigw_event, "")
         data = json.loads(ret["body"])
@@ -659,7 +699,19 @@ def test_get_single_operation_wrong_user_id():
             apigw_event = json.load(f)
             apigw_event["pathParameters"]["userId"] = "123456789"
         ret = operations.lambda_handler(apigw_event, "")
-        assert json.loads(ret["body"]) == {'message': 'Error: Invalid body fields'}
+        assert json.loads(ret["body"]) == {"Error": "User not found"}
+        assert ret["statusCode"] == 400
+
+
+def test_get_single_operation_wrong_wallet_id():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-get-operation-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+            apigw_event["pathParameters"]["walletId"] = "123456789"
+        ret = operations.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {"Error": "Wallet not found"}
         assert ret["statusCode"] == 400
 
 
@@ -670,10 +722,38 @@ def test_add_operation_wrong_type():
         with open("./events/operations/event-post-operation.json", "r") as f:
             apigw_event = json.load(f)
             apigw_event["body"] = json.loads(apigw_event["body"])
-            apigw_event["body"]["type"] = "sell"
+            apigw_event["body"]["type"] = "not-a-type"
             apigw_event["body"] = json.dumps(apigw_event["body"])
         ret = operations.lambda_handler(apigw_event, "")
-        assert json.loads(ret["body"]) == {"Error": "Asset not found"}
+        assert json.loads(ret["body"]) == {"Error": "Invalid body fields"}
+        assert ret["statusCode"] == 400
+
+
+def test_add_operation_wallet_does_not_belong_to_user():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-post-operation.json", "r") as f:
+            apigw_event = json.load(f)
+            apigw_event["pathParameters"]["userId"] = UUID_MOCK_VALUE_JANE
+        ret = operations.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {
+            "Error": "Wallet does not belong to the user"
+        }
+        assert ret["statusCode"] == 400
+
+
+def test_add_operation_invalid_body_fields():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-post-operation.json", "r") as f:
+            apigw_event = json.load(f)
+        apigw_event["body"] = json.loads(apigw_event["body"])
+        del apigw_event["body"]["amount"]
+        apigw_event["body"] = json.dumps(apigw_event["body"])
+        ret = operations.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {"Error": "Invalid body fields"}
         assert ret["statusCode"] == 400
 
 
@@ -691,7 +771,6 @@ def test_add_operation():
         assert data["operationId"] == UUID_MOCK_VALUE_NEW_OPERATION
         assert data["type"] == expected_response["type"]
         assert data["amount"] == expected_response["amount"]
-        assert data["userId"] == UUID_MOCK_VALUE_MARY
         assert data["walletId"] == UUID_MOCK_VALUE_NEW_WALLET1
         assert ret["statusCode"] == 201
 
@@ -705,3 +784,15 @@ def test_delete_operation():
         ret = operations.lambda_handler(apigw_event, "")
         assert json.loads(ret["body"]) == {}
         assert ret["statusCode"] == 200
+
+
+def test_delete_operation_wrong_wallet_id():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-delete-operation-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+            apigw_event["pathParameters"]["walletId"] = "123456789"
+        ret = operations.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {"Error": "Wallet not found"}
+        assert ret["statusCode"] == 400
