@@ -1,0 +1,21 @@
+{
+    "resource": "/users/{userId}/wallets/{walletId}/operations/{operationId}",
+    "path": "/users/756d5aa2-3f60-4ae8-a9c7-32079d55990d/wallets/358d3f25-1cab-471b-ae8d-453246849c19/operations/77593b94-0ce7-4548-bdc9-f9509f9fcf48",
+    "httpMethod": "GET",
+    "headers": null,
+    "multiValueHeaders": null,
+    "queryStringParameters": null,
+    "multiValueQueryStringParameters": null,
+    "pathParameters": {
+        "userId": "756d5aa2-3f60-4ae8-a9c7-32079d55990d",
+        "walletId" : "358d3f25-1cab-471b-ae8d-453246849c19",
+        "operationId": "77593b94-0ce7-4548-bdc9-f9509f9fcf48"
+
+    },
+    "stageVariables": null,
+    "requestContext": {
+        "requestId": "b77db916-2e77-4783-b136-1f74804ed579"
+    },
+    "body": null,
+    "isBase64Encoded": false
+}

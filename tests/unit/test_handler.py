@@ -10,6 +10,7 @@ from unittest.mock import patch
 USERS_MOCK_TABLE_NAME = "UsersTest"
 ASSETS_MOCK_TABLE_NAME = "AssetsTest"
 WALLETS_MOCK_TABLE_NAME = "WalletsTest"
+OPERATIONS_MOCK_TABLE_NAME = "OperationsTest"
 
 UUID_MOCK_VALUE_JOHN = "f8216640-91a2-11eb-8ab9-57aa454facef"
 UUID_MOCK_VALUE_JANE = "31a9f940-917b-11eb-9054-67837e2c40b0"
@@ -22,6 +23,10 @@ UUID_MOCK_VALUE_DOT = "5bc3d175-513e-43fc-9edd-64c9f6de9b8e"
 UUID_MOCK_VALUE_NEW_WALLET1 = "358d3f25-1cab-471b-ae8d-453246849c19"
 UUID_MOCK_VALUE_NEW_WALLET2 = "55ddefa2-4723-4203-abe4-9390d79a45f2"
 
+UUID_MOCK_VALUE_NEW_OPERATION1 = "77593b94-0ce7-4548-bdc9-f9509f9fcf48"
+UUID_MOCK_VALUE_NEW_OPERATION2 = "d12d179a-f99e-4bb5-a498-dc660304f151"
+
+
 @contextmanager
 def my_test_environment():
     with mock_dynamodb():
@@ -29,6 +34,7 @@ def my_test_environment():
         put_data_dynamodb_user()
         put_data_dynamodb_asset()
         put_data_dynamodb_wallet()
+        put_data_dynamodb_operation()
         yield
 
 
@@ -65,6 +71,28 @@ def set_up_dynamodb():
                 "IndexName": "Wallets-AssetIndex",
                 "KeySchema": [
                     {"AttributeName": "userId", "KeyType": "HASH"},
+                ],
+                "Projection": {
+                    "ProjectionType": "ALL",
+                },
+            },
+        ],
+    )
+    conn.create_table(
+        TableName=OPERATIONS_MOCK_TABLE_NAME,
+        KeySchema=[
+            {"AttributeName": "operationId", "KeyType": "HASH"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "operationId", "AttributeType": "S"},
+            {"AttributeName": "walletId", "AttributeType": "S"},
+        ],
+        ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": "Operations-WalletIndex",
+                "KeySchema": [
+                    {"AttributeName": "walletId", "KeyType": "HASH"},
                 ],
                 "Projection": {
                     "ProjectionType": "ALL",
@@ -139,6 +167,7 @@ def put_data_dynamodb_asset():
         },
     )
 
+
 def put_data_dynamodb_wallet():
     conn = boto3.client("dynamodb")
 
@@ -161,6 +190,30 @@ def put_data_dynamodb_wallet():
             "balance": {"S": "10"},
             "userId": {"S": UUID_MOCK_VALUE_MARY},
             "assetId": {"S": UUID_MOCK_VALUE_DOT},
+        },
+    )
+
+
+def put_data_dynamodb_operation():
+    conn = boto3.client("dynamodb")
+
+    # create wallets
+    conn.put_item(
+        TableName=OPERATIONS_MOCK_TABLE_NAME,
+        Item={
+            "operationId": {"S": UUID_MOCK_VALUE_NEW_OPERATION1},
+            "amount": {"S": "5"},
+            "type": {"S": "buy"},
+            "walletId": {"S": UUID_MOCK_VALUE_NEW_WALLET1},
+        },
+    )
+    conn.put_item(
+        TableName=OPERATIONS_MOCK_TABLE_NAME,
+        Item={
+            "operationId": {"S": UUID_MOCK_VALUE_NEW_OPERATION2},
+            "amount": {"S": "10"},
+            "type": {"S": "sell"},
+            "walletId": {"S": UUID_MOCK_VALUE_NEW_WALLET1},
         },
     )
 
@@ -287,6 +340,7 @@ def test_delete_user():
 # ----------------------------
 
 UUID_MOCK_VALUE_NEW_ASSET = "new-asset-guid"
+
 
 def mock_uuid_asset():
     return UUID_MOCK_VALUE_NEW_ASSET
@@ -514,5 +568,140 @@ def test_delete_wallet():
         with open("./events/wallets/event-delete-wallet-by-id.json", "r") as f:
             apigw_event = json.load(f)
         ret = wallets.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {}
+        assert ret["statusCode"] == 200
+
+
+# ----------------------------
+#           OPERATIONS
+# ----------------------------
+
+UUID_MOCK_VALUE_NEW_OPERATION = "new-operation-guid"
+
+def mock_uuid_operation():
+    return UUID_MOCK_VALUE_NEW_OPERATION
+
+
+@patch.dict(
+    os.environ,
+    {
+        "WALLETS_TABLE": WALLETS_MOCK_TABLE_NAME,
+        "USERS_TABLE": USERS_MOCK_TABLE_NAME,
+        "ASSETS_TABLE": ASSETS_MOCK_TABLE_NAME,
+        "OPERATIONS_TABLE": OPERATIONS_MOCK_TABLE_NAME,
+        "AWS_XRAY_CONTEXT_MISSING": "LOG_ERROR",
+    },
+)
+def test_get_list_of_operations():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-get-all-operations.json", "r") as f:
+            apigw_get_all_operations_event = json.load(f)
+        expected_response = [
+            {
+                "walletId": UUID_MOCK_VALUE_NEW_WALLET1,
+                "address": "0x123456789",
+                "balance": "5",
+                "userId": UUID_MOCK_VALUE_MARY,
+                "assetId": UUID_MOCK_VALUE_DOT,
+            },
+            {
+                "walletId": UUID_MOCK_VALUE_NEW_WALLET2,
+                "address": "0x987654321",
+                "balance": "10",
+                "userId": UUID_MOCK_VALUE_MARY,
+                "assetId": UUID_MOCK_VALUE_DOT,
+            },
+        ]
+        ret = operations.lambda_handler(apigw_get_all_operations_event, "")
+        data = json.loads(ret["body"])
+        assert data == expected_response
+        assert ret["statusCode"] == 200
+
+
+def test_get_single_operation():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-get-operation-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+        expected_response = {
+            "walletId": UUID_MOCK_VALUE_NEW_WALLET1,
+            "address": "0x123456789",
+            "balance": "5",
+            "userId": UUID_MOCK_VALUE_MARY,
+            "assetId": UUID_MOCK_VALUE_DOT,
+        }
+        ret = operations.lambda_handler(apigw_event, "")
+        data = json.loads(ret["body"])
+        assert data == expected_response
+        assert ret["statusCode"] == 200
+
+
+def test_get_single_operation_wrong_id():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-get-operation-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+            apigw_event["pathParameters"]["operationId"] = "123456789"
+        ret = operations.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {}
+        assert ret["statusCode"] == 200
+
+
+def test_get_single_operation_wrong_user_id():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-get-operation-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+            apigw_event["pathParameters"]["userId"] = "123456789"
+        ret = operations.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {"Error": "User not found"}
+        assert ret["statusCode"] == 400
+
+
+def test_add_operation_wrong_asset_id():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-post-operation.json", "r") as f:
+            apigw_event = json.load(f)
+            apigw_event["body"] = json.loads(apigw_event["body"])
+            apigw_event["body"]["assetId"] = "123456789"
+            apigw_event["body"] = json.dumps(apigw_event["body"])
+        ret = operations.lambda_handler(apigw_event, "")
+        assert json.loads(ret["body"]) == {"Error": "Asset not found"}
+        assert ret["statusCode"] == 400
+
+
+@patch("uuid.uuid1", mock_uuid_operation)
+@pytest.mark.freeze_time("2001-01-01")
+def test_add_operation():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-post-operation.json", "r") as f:
+            apigw_event = json.load(f)
+        expected_response = json.loads(apigw_event["body"])
+        ret = operations.lambda_handler(apigw_event, "")
+        data = json.loads(ret["body"])
+        assert data["walletId"] == UUID_MOCK_VALUE_NEW_WALLET
+        assert data["address"] == expected_response["address"]
+        assert data["balance"] == expected_response["balance"]
+        assert data["assetId"] == expected_response["assetId"]
+        assert data["userId"] == UUID_MOCK_VALUE_MARY
+        assert ret["statusCode"] == 201
+
+
+def test_delete_operation():
+    with my_test_environment():
+        from src.api import operations
+
+        with open("./events/operations/event-delete-operation-by-id.json", "r") as f:
+            apigw_event = json.load(f)
+        ret = operations.lambda_handler(apigw_event, "")
         assert json.loads(ret["body"]) == {}
         assert ret["statusCode"] == 200

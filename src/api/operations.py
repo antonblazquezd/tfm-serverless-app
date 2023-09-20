@@ -187,6 +187,7 @@ def is_valid_body(request_json):
             request_json
             and 'amount' in request_json
             and 'type' in request_json
+            and ('type' == 'buy' or 'type' == 'sell') 
         )
     except (json.JSONDecodeError, KeyError):
         return False
