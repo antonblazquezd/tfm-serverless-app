@@ -659,18 +659,18 @@ def test_get_single_operation_wrong_user_id():
             apigw_event = json.load(f)
             apigw_event["pathParameters"]["userId"] = "123456789"
         ret = operations.lambda_handler(apigw_event, "")
-        assert json.loads(ret["body"]) == {"Error": "User not found"}
+        assert json.loads(ret["body"]) == {'message': 'Error: Invalid body fields'}
         assert ret["statusCode"] == 400
 
 
-def test_add_operation_wrong_asset_id():
+def test_add_operation_wrong_type():
     with my_test_environment():
         from src.api import operations
 
         with open("./events/operations/event-post-operation.json", "r") as f:
             apigw_event = json.load(f)
             apigw_event["body"] = json.loads(apigw_event["body"])
-            apigw_event["body"]["assetId"] = "123456789"
+            apigw_event["body"]["type"] = "sell"
             apigw_event["body"] = json.dumps(apigw_event["body"])
         ret = operations.lambda_handler(apigw_event, "")
         assert json.loads(ret["body"]) == {"Error": "Asset not found"}
@@ -688,11 +688,11 @@ def test_add_operation():
         expected_response = json.loads(apigw_event["body"])
         ret = operations.lambda_handler(apigw_event, "")
         data = json.loads(ret["body"])
-        assert data["walletId"] == UUID_MOCK_VALUE_NEW_WALLET
-        assert data["address"] == expected_response["address"]
-        assert data["balance"] == expected_response["balance"]
-        assert data["assetId"] == expected_response["assetId"]
+        assert data["operationId"] == UUID_MOCK_VALUE_NEW_OPERATION
+        assert data["type"] == expected_response["type"]
+        assert data["amount"] == expected_response["amount"]
         assert data["userId"] == UUID_MOCK_VALUE_MARY
+        assert data["walletId"] == UUID_MOCK_VALUE_NEW_WALLET1
         assert ret["statusCode"] == 201
 
 
